@@ -95,3 +95,35 @@ Eureka采用了CS的设计架构，EurekaServer作为服务注册功能的服务
       - ![image-20200802220151548](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20200802220151548.png)
       - ![image-20200802220218018](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20200802220218018.png)
    6. Ribbon和Eureka整合后Consumer可以直接调用服务而不用再关心地址和端口号，且该服务还具备负载均衡功能
+   
+9. 修改主机名称
+
+   ```yml
+   eureka:
+     client:
+       register-with-eureka: true #表示是否将自己注册进EurekaServer默认为true
+       fetch-registry: true #是否从EurekaServer抓取已有的注册信息，默认为true，单节点无所谓，集群必须设置为true才能配合ribbon使用负载均衡
+       service-url:
+   #      defaultZone: http://localhost:7001/eureka
+         defaultZone: http://eureka7001.com:7001/eureka,http://eureka7002.com:7002/eureka #集群版
+     #添加实例id修改主机名称
+     instance:
+       instance-id: payment8001
+   ```
+
+10. 提示信息有ip提示
+
+    ```yml
+    eureka:
+      client:
+        register-with-eureka: true #表示是否将自己注册进EurekaServer默认为true
+        fetch-registry: true #是否从EurekaServer抓取已有的注册信息，默认为true，单节点无所谓，集群必须设置为true才能配合ribbon使用负载均衡
+        service-url:
+          #      defaultZone: http://localhost:7001/eureka
+          defaultZone: http://eureka7001.com:7001/eureka,http://eureka7002.com:7002/eureka #集群版
+      instance:
+        instance-id: payment8002
+        prefer-ip-address: true #访问路径可以显示ip地址
+    ```
+
+    
