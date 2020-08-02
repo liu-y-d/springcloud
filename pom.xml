@@ -12,6 +12,8 @@
     <module>cloud-consumer-order80</module>
       <module>cloud-api-commons</module>
       <module>cloud-eureka-server7001</module>
+      <module>cloud-eureka-server7002</module>
+    <module>cloud-provider-payment8002</module>
   </modules>
   <packaging>pom</packaging>
 
@@ -70,7 +72,7 @@
       <dependency>
         <groupId>mysql</groupId>
         <artifactId>mysql-connector-java</artifactId>
-        <version></version>
+        <version>${mysql.version}</version>
       </dependency>
       <dependency>
         <groupId>mysql</groupId>
@@ -91,34 +93,10 @@
     </dependencies>
   </dependencyManagement>
   <build>
-    <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
-      <plugins>
-        <plugin>
-          <artifactId>maven-clean-plugin</artifactId>
-          <version>3.1.0</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-site-plugin</artifactId>
-          <version>3.7.1</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-project-info-reports-plugin</artifactId>
-          <version>3.0.0</version>
-        </plugin>
-      </plugins>
-    </pluginManagement>
     <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-site-plugin</artifactId>
-        <configuration>
-          <locales>en,fr</locales>
-        </configuration>
-      </plugin>
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
-        <version>2.2.4.RELEASE</version>
         <configuration>
           <fork>true</fork>
           <addResources>true</addResources>
@@ -126,12 +104,4 @@
       </plugin>
     </plugins>
   </build>
-
-  <reporting>
-    <plugins>
-      <plugin>
-        <artifactId>maven-project-info-reports-plugin</artifactId>
-      </plugin>
-    </plugins>
-  </reporting>
 </project>
