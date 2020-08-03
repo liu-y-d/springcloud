@@ -127,3 +127,115 @@ Eureka采用了CS的设计架构，EurekaServer作为服务注册功能的服务
     ```
 
     
+
+### 2.6服务发现Discovery
+
+1. 对于注册进Eureka里面的微服务，可以通过服务发现来获得该服务的信息
+
+2. 修改cloud-provider-payment8001的Controller
+
+   ```java
+   @GetMapping(value = "/payment/discovery")
+       public Object discovery(){
+           List<String> services = discoveryClient.getServices();
+           for (String service: services) {
+               log.info("---element:"+service);
+           }
+           List<ServiceInstance> instances = discoveryClient.getInstances("CLOUD-PAYMENT-SERVICE");
+           for (ServiceInstance instance : instances) {
+               log.info(instance.getServiceId()+"\t"+instance.getHost()+"\t"+instance.getPort()+"\t"+instance.getUri());
+           }
+           return this.discoveryClient;
+       }
+   ```
+
+   
+
+3. 8001主启动类
+
+   ```java
+   @SpringBootApplication
+   @EnableEurekaClient
+   @EnableDiscoveryClient
+   public class PaymentMain8001 {
+       public static void main(String[] args) {
+           SpringApplication.run(PaymentMain8001.class,args);
+       }
+   }
+   ```
+
+   
+
+4. 自测  
+
+   ![image-20200803202017324](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20200803202017324.png)
+
+### 2.7Eureka自我保护
+
+1. 故障现象
+
+   保护模式主要用于一组客户端和EurekaServer之间存在网络分区场景下的保护。一旦进入保护模式，**EurekaServer将会尝试保护其服务注册表中的信息，不再删除服务注册表中的数据，也就是不会注销任何微服务。**
+
+   如果在EurekaServer的首页看到这段提示，则说明Eureka进入了保护模式
+
+   #### **EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY'RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.**
+
+2. 导致原因
+
+   某时刻某一个微服务不可用了，Eureka不会立刻清理，依旧会对微服务的信息进行保存
+
+   属于CAP中的AP分支
+
+3. 怎么禁止自我保护
+
+   ```yml
+   server:
+     port: 7001
+   eureka:
+     instance:
+       hostname: eureka7001.com #eureka服务端的实例名称
+     client:
+       register-with-eureka: false #false标识不向注册中心注册自己
+       fetch-registry: false #false标识自己端就是注册中心，我的职责就是维护服务实例，并不需要去检索服务
+       service-url:
+         defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/ #设置与EurekaServer交互的地址查询服务和注册服务都需要依赖这个地址
+   #      defaultZone: http://eureka7002.com:7002/eureka/ #设置与EurekaServer交互的地址查询服务和注册服务都需要依赖这个地址
+     server:
+       enable-self-preservation: false #关闭自我保护机制，保证不可用服务被及时剔除
+       eviction-interval-timer-in-ms: 2000
+   ```
+
+   ```yml
+   server:
+     port: 8001
+   
+   
+   spring:
+     application:
+       name: cloud-payment-service
+     datasource:
+       type: com.alibaba.druid.pool.DruidDataSource  # 当前数据源操作类型
+       driver-class-name: com.mysql.cj.jdbc.Driver # mysql 驱动包
+       url: jdbc:mysql://localhost:3306/db2020?useUnicode=true&characterEncoding=utf-8
+       username: root
+       password: 123456
+   eureka:
+     client:
+       register-with-eureka: true #表示是否将自己注册进EurekaServer默认为true
+       fetch-registry: true #是否从EurekaServer抓取已有的注册信息，默认为true，单节点无所谓，集群必须设置为true才能配合ribbon使用负载均衡
+       service-url:
+         defaultZone: http://localhost:7001/eureka
+   #      defaultZone: http://eureka7001.com:7001/eureka,http://eureka7002.com:7002/eureka #集群版
+     instance:
+       instance-id: payment8001
+       prefer-ip-address: true #访问路径可以显示ip地址
+       lease-renewal-interval-in-seconds: 1 #Eureka客户端向服务端发送心跳的时间间隔，单位秒（默认30）
+       lease-expiration-duration-in-seconds: 2 #Eureka服务端在收到最后一次心跳后等待时间上线，单位秒（默认90秒），超时将剔除服务
+   mybatis:
+     mapper-locations: classpath:mapper/*.xml
+     type-aliases-package: com.lyd.springcloud.entities # 所有Entity别名类所在包
+   
+   ```
+
+   
+

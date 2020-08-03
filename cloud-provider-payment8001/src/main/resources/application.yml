@@ -16,11 +16,13 @@ eureka:
     register-with-eureka: true #表示是否将自己注册进EurekaServer默认为true
     fetch-registry: true #是否从EurekaServer抓取已有的注册信息，默认为true，单节点无所谓，集群必须设置为true才能配合ribbon使用负载均衡
     service-url:
-#      defaultZone: http://localhost:7001/eureka
-      defaultZone: http://eureka7001.com:7001/eureka,http://eureka7002.com:7002/eureka #集群版
+      defaultZone: http://localhost:7001/eureka
+#      defaultZone: http://eureka7001.com:7001/eureka,http://eureka7002.com:7002/eureka #集群版
   instance:
     instance-id: payment8001
     prefer-ip-address: true #访问路径可以显示ip地址
+    lease-renewal-interval-in-seconds: 1 #Eureka客户端向服务端发送心跳的时间间隔，单位秒（默认30）
+    lease-expiration-duration-in-seconds: 2 #Eureka服务端在收到最后一次心跳后等待时间上线，单位秒（默认90秒），超时将剔除服务
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.lyd.springcloud.entities # 所有Entity别名类所在包
