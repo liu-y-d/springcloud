@@ -239,3 +239,36 @@ Eureka采用了CS的设计架构，EurekaServer作为服务注册功能的服务
 
    
 
+### 2.8Zookeeper服务注册与开发
+
+SpringCloud整合Zookeeper代替Eureka
+
+1. 注册中心Zookeeper
+   1. zookeeper是一个分布式协调工具，可以实现注册中心功能
+   
+   2. 关闭Linux服务器防火墙后启动zookeeper服务器
+   
+   3. zookeeper服务器取代Eureka服务器，zookeeper作为服务注册中心
+   
+   4. Linux安装
+   
+      [zookeeper]: https://www.cnblogs.com/zhiyouwu/p/11546097.html	"zookeeper"
+   
+      
+   
+2. 服务提供者
+
+   1. 新建cloud-provider-payment8004
+   2. POM
+   3. YML
+   4. 主启动类
+   5. controller
+   6. 启动8004注册进zookeeper
+   7. 验证测试
+   8. 验证测试2
+   9. 思考
+      1. 服务节点是临时节点还是持久节点（临时）
+
+3. 服务消费者
+
+   1. 
