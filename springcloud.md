@@ -239,36 +239,101 @@ Eureka采用了CS的设计架构，EurekaServer作为服务注册功能的服务
 
    
 
-### 2.8Zookeeper服务注册与开发
+## 3.Zookeeper服务注册与开发
 
 SpringCloud整合Zookeeper代替Eureka
 
-1. 注册中心Zookeeper
-   1. zookeeper是一个分布式协调工具，可以实现注册中心功能
-   
-   2. 关闭Linux服务器防火墙后启动zookeeper服务器
-   
-   3. zookeeper服务器取代Eureka服务器，zookeeper作为服务注册中心
-   
-   4. Linux安装
-   
-      [zookeeper]: https://www.cnblogs.com/zhiyouwu/p/11546097.html	"zookeeper"
-   
-      
-   
-2. 服务提供者
+### 3.1注册中心Zookeeper
 
-   1. 新建cloud-provider-payment8004
-   2. POM
-   3. YML
-   4. 主启动类
-   5. controller
-   6. 启动8004注册进zookeeper
-   7. 验证测试
-   8. 验证测试2
-   9. 思考
-      1. 服务节点是临时节点还是持久节点（临时）
+1. zookeeper是一个分布式协调工具，可以实现注册中心功能
 
-3. 服务消费者
+2. 关闭Linux服务器防火墙后启动zookeeper服务器
 
-   1. 
+3. zookeeper服务器取代Eureka服务器，zookeeper作为服务注册中心
+
+4. Linux安装
+
+   [zookeeper]: https://www.cnblogs.com/zhiyouwu/p/11546097.html	"zookeeper"
+
+   
+
+### 3.2服务提供者
+
+1. 新建cloud-provider-payment8004
+2. POM
+3. YML
+4. 主启动类
+5. controller
+6. 启动8004注册进zookeeper
+7. 验证测试
+8. 验证测试2
+9. 思考
+   1. 服务节点是临时节点还是持久节点（临时）
+
+### 3.3服务消费者
+
+## 4.Consul服务注册与发现
+
+### 4.1Consul简介
+
+1. 是什么
+
+   一套开源的分布式服务发现和配置管理系统，用Go语言开发，提供了微服务系统中的服务治理、配置中心、控制总线等功能。这些功能中的每一个都可以根据需要单独使用，也可以一起使用以构建全方位的服务网格，总之Consul提供了一种完整的服务网格解决方案。它具有很多优点，包括：基于raft协议，比较简洁；支持健康检查，同时支持HTTP和DNS协议支持跨数据中心的WAN集群提供土星界面跨平台，支持Linux，Mac，Windows
+
+2. 能干嘛
+
+   1. 服务注册与发现（支持HTTP和DNS两种发现方式）
+   2. 健康检查（支持多种方式，HTTP、TCP、Docker、Shell脚本定制化）
+   3. KV键值对存储
+   4. 多数据中心（Consul支持多数据中心）
+   5. 可视化Web界面
+
+3. 去哪下
+
+   1. https://pan.baidu.com/s/1nMXRms3_ZPhgqawrcEcsdA 提取码 247m
+
+4. 怎么玩
+
+### 4.2安装并运行Consul
+
+1. 双击运行exe程序，安装成功
+2. consul agent -dev开发模式运行
+3. 访问localhost:8500
+
+### 4.3服务提供者
+
+1. 新建module支付服务provider8006
+2. pom
+3. yml
+4. 主启动类
+5. 业务类Controller
+6. 验证测试
+
+### 4.4服务消费者
+
+1. 新建module消费服务order80（cloud-consumerconsul-order80）
+2. pom
+3. yml
+4. 主启动类
+5. 配置bean
+6. controller
+7. 验证测试
+8. 访问测试地址
+
+### 4.5三个注册中心异同点
+
+|  组件名   | 语言 |      CAP       | 服务健康检查 | 对外暴露接口 | SpringCloud集成 |
+| :-------: | :--: | :------------: | :----------: | ------------ | :-------------: |
+|  Eureka   | Java |  AP（高可用）  |   可配支持   | HTTP         |     已集成      |
+| Zookeeper | Java | CP（数据一致） |     支持     | 客户端       |     已集成      |
+|  Consul   |  Go  | CP（数据一致） |     支持     | HTTP/DNS     |     已集成      |
+
+- CAP
+  - C：Consistency（强一致性）
+  - A：Availability（可用性）
+  - P：Parttiton tolerance（分区容错性）
+  - CAP理论关注力度是数据，而不是整体系统设计的策略
+  - CAP理论的核心是：一个分布式系统不可能同时很好的满足一致性，可用性和分区容错性这三个需求，因此，根据CAP原理将NoSQL数据库分成了满足CA原则、满足CP原则和满足AP原则三大类
+    - CA-单点集群，满足一致性，可用性的系统，通常在可扩展性上不太强大
+    - CP-满足一致性，分区容忍性的系统，通畅性能不是特别高
+    - AP-满足可用性，分区容忍性的系统，通常可能对一致性要求低一些
