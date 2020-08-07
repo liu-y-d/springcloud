@@ -337,3 +337,51 @@ SpringCloud整合Zookeeper代替Eureka
     - CA-单点集群，满足一致性，可用性的系统，通常在可扩展性上不太强大
     - CP-满足一致性，分区容忍性的系统，通畅性能不是特别高
     - AP-满足可用性，分区容忍性的系统，通常可能对一致性要求低一些
+
+## 5.Ribbon负载均衡服务调用
+
+### 5.1概述
+
+1. 是什么
+
+   SpringCloudRibbon是基于NetFlixRibbon实现的一套客户端 负载均衡工具
+
+   简单到说，Ribbon是Netflix发布的开源项目，主要功能是提供客户端的软件负载均衡算法和服务调用。Ribbon客户端组件提供一系列完善的配置如连接超时，重试等。简单的说，就是在配置文件中列出LoadBalancer（简称LB）后面所有的机器，Ribbon会祖东的帮助你基于某种规则（简单轮询，随机链接等）去链接这些机器。我们很容易使用Ribbon实现自定义的负载均衡算法。
+
+2. 能干嘛
+
+   1. LB负载均衡
+
+      简单的说局势将用户的请求平摊的分配到多个服务上，从而达到系统的HA(高可用)，常见的负载均衡软件有Nginx，LVS，硬件F5等
+
+      Ribbon本地负载均衡客户端VSNginx服务端负载均衡区别
+
+      ​	Nginx是服务器负载均衡，客户端所有请求都会交个Nginx，然后由Nginx实现转发起请求。即负载均衡是由服务端实现的
+
+      ​	Ribbon本地负载均衡，在调用微服务接口时候，会在注册中心上获取注册信息服务列表之后缓存搞JVM本地，从而本地实现RPC远程服务调用技术
+
+      1. 集中式LB（Nginx，F5）
+      2. 进程内LB（Ribbon）
+
+3. 一句话
+
+   负载均衡+RestTemplate调用
+
+### 5.2Ribbon负载均衡演示
+
+### 5.3Ribbon核心组件IRule
+
+1. IRule:根据特定算法中从服务列表中选取一个要访问的服务
+
+   ![image-20200807212832238](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20200807212832238.png)
+
+2. 如何替换
+
+   1. 修改cloud-consumer-80
+   2. 注意配置细节
+   3. 新建package
+   4. 上面包下新建MySelfRule规则类
+   5. 朱启东类添加@RibbonClient
+   6. 测试
+
+### 5.4Ribbon负载均衡算法
