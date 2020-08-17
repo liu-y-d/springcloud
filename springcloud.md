@@ -381,7 +381,19 @@ SpringCloud整合Zookeeper代替Eureka
    2. 注意配置细节
    3. 新建package
    4. 上面包下新建MySelfRule规则类
-   5. 朱启东类添加@RibbonClient
+   5. 主启动类添加@RibbonClient
    6. 测试
 
 ### 5.4Ribbon负载均衡算法
+
+1. 原理（轮询）
+
+   负载均衡算法：rest接口第几次请求数%服务器集群总数量 = 实际调用服务器位置下标
+
+   ![image-20200816200306508](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20200816200306508.png)
+
+2. 源码
+
+3. 手写
+
+   
