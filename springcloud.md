@@ -484,6 +484,8 @@ Feign提供了日志打印功能，我们可以通过配置来调整日志级别
 
 ### 7.3Hystrix案例
 
+1. 构建
+
 ### 7.4Hystrix工作流程
 
 ### 7.5服务监控HystrixDashboard
