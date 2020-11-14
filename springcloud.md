@@ -476,14 +476,76 @@ Feign提供了日志打印功能，我们可以通过配置来调整日志级别
 2. #### 服务熔断（break）
 
    1. 类比保险丝达到最大服务访问后，直接拒绝访问，拉闸限电，然后调用服务降级的方法并返回友好提示
+
    2. 就是保险丝-服务的降级->进而熔断->恢复调用链路
+
+   3. 熔断类型
+
+      1. 熔断打开：请求不再进行调用当前服务，内部设置时钟一般为MTTR（平均故障处理时间），当打开时长达到所设时钟则进入半熔断状态
+
+      2. 熔断关闭：熔断关闭不会对服务进行熔断
+
+      3. 熔断半开：部分请求根据规则调用当前服务，如果请求成功且符合规则则任务当前服务恢复正常，关闭熔断
+
+         ```java
+         /**
+              * @Description: 服务熔断
+              * enabled 是否开启断路器
+              * requestVolumeThreshold 请求次数
+              * sleepWindowInMilliseconds 时间窗口期
+              * errorThresholdPercentage 失败率达到多少后跳闸（错误百分比阀值）
+              * @Param: [id]
+              * @return: java.lang.String
+              * @Author: Liuyunda
+              * @Date: 2020/11/15
+              */
+             @HystrixCommand(fallbackMethod = "paymentCircuitBreakerFallback",commandProperties = {
+                     @HystrixProperty(name = "circuitBreaker.enabled",value = "true"),
+                     @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold",value = "10"),
+                     @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds",value = "10000"),
+                     @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage",value = "60"),
+             })
+             public String paymentCircuitBreaker(@PathVariable("id") Integer id) {
+                 if (id < 0) {
+                     throw new RuntimeException("*******id 不能为负数");
+                 }
+                 String serialNumber = IdUtil.simpleUUID();
+                 return Thread.currentThread().getName() + "\t" + "调用成功，流水号：" + serialNumber;
+             }
+         
+             public String paymentCircuitBreakerFallback(@PathVariable("id") Integer id) {
+                 return "id 不能为负数，请稍后再试，id：" + id;
+             }
+         ```
+
+      4. 参数解释
+
+         1. **requestVolumeThreshold**（请求次数）
+
+            在时间窗口期内，必须满足请求次数才有资格熔断。默认20，意味着在10秒内，如果该Hystrix命令的调用次数不足20次，及时所有的请求都超时或其他原因导致失败，断路器都不会打开
+
+         2. **sleepWindowInMilliseconds**（时间窗口期）
+
+            断路器确定是否打开需要统计一些请求和错误数据，而统计时间范围就是时间窗口期，默认为最近的10秒
+
+         3. **errorThresholdPercentage**（错误百分比阀值）
+
+            当请求次数在时间窗口期内超过了阀值，比如发生了30次调用，如果在这30次调用中，有15次发生了超时异常，也就是超过了50%的错误百分比，在默认设定的50%阀值情况下，这时候就会将断路器打开
+
+      5. **断路器开启或关闭的条件**
+
+         1. 当满足一定的阀值的时候（默认10秒内超过20个请求次数）
+         2. 当失败率达到一定的时候（默认10秒内超过50%的请求失败）
+         3. 达到以上阀值，断路器将会开启
+         4. 当开启的时候，所有的请求都不会进行转发
+         5. 一段时间后（默认是5秒），这个时候断路器是半开状态，会让其中一个请求进行转发。如果成功，断路器会关闭，如果失败，将重复步骤4和5.
 
 3. #### 服务限流（flowlimit）
 
    1. 秒杀高并发等操作，严禁一蜂窝的过来拥挤，大家排队，一秒钟N个，有序进行
 
-### 7.3Hystrix案例
 
-### 7.4Hystrix工作流程
 
-### 7.5服务监控HystrixDashboard
+### 7.3Hystrix工作流程
+
+### 7.4服务监控HystrixDashboard
