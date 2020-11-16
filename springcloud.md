@@ -549,3 +549,350 @@ Feign提供了日志打印功能，我们可以通过配置来调整日志级别
 ### 7.3Hystrix工作流程
 
 ### 7.4服务监控HystrixDashboard
+
+## 8.Gateway新一代服务网关
+
+### 8.1概念简介
+
+1. 是什么
+
+   Gateway是在Spring生态系统上构建的API网关服务，基于Spring5，SpringBoot2和Project Reactor等技术。
+
+   Gateway旨在他提供一种简单而有效的方式来对API进行路由，以及提供一些强大的过滤器功能，例如：熔断、限流、重试等。
+
+   Gateway是基于WebFlux框架实现的，而WebFlux框架底层则使用了高性能的Reactor模式通信框架Netty。 
+
+   Gateway的目标提供统一的路由方式且基于Filter链的方式提供了网关的基本功能，例如：安全、监控/指标，和限流。
+
+   **Gateway使用的WebFlux中的reactor-netty响应式编程组件，底层使用了Netty通讯框架。**
+
+2. 能干嘛
+
+   1. 反向代理
+   2. 鉴权
+   3. 流量控制
+   4. 熔断
+   5. 日志监控
+   6. 。。。。。。
+
+3. 微服务架构中网关在哪里
+
+   ![image-20201115223212568](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201115223212568.png)
+
+4. 为什么选择Gateway
+
+   1. zuul2迟迟不发布
+   2. Gateway是基于**异步非阻塞模型**上进行开发的，性能方面不许需要担心。
+
+5. Gateway的特性
+
+   1. 基于Spring Framework 5，Project Reactor 和Spring Boot 2.0进行构建；
+   2. 动态路由：能够匹配任何请求属性
+   3. 可以对路由指定Predicate（断言）和Filter（过滤器）
+   4. 集成Hystrix的断路器功能
+   5. 集成Spring Cloud服务发现功能
+   6. 易于编写的Predicate和Filter
+   7. 请求限流功能
+   8. 支持路径重写
+
+6. Gateway 和 Zuul的区别
+
+   在SpringCloud Finchley正式版之前，Spring Cloud推荐的网关是Netflix提供的Zuul。
+
+   1. Zuul 1.x，是一个机遇阻塞I/O的API Gateway
+   2. Zuul 1.x，基于Servlet2.5适用阻塞架构它不支持任何长链接，Zuul的设计模式和Nginx较像，每次I/O操作都是从工作线程中选择一个执行，请求线程被阻塞到工作线程完成，但是长别是Nginx是用C++实现，Zuul用Java实现，而Jvm本身会有第一次加载较慢的情况，使得Zuul的性能相对较差
+   3. Zuul 2.x ，理念更先进，想基于Netty非阻塞和支持长链接，但Spring Cloud 目前还没有整合。Zuul  2.x 的性能较Zuul 1.x 有较大提升。在性能方面，根据官方提供的基准测试。Spring Cloud Gateway 的PRS（每秒请求数）是Zuul 的1.6倍。
+   4. SpringCloud Gateway 建立在Spring Framework 5，Project Reactor 和Spring Boot 2.0，使用非阻塞API。
+   5. SpringCloud Gateway 还支持WebSocket，并且与Spring紧密继承拥有更好的开发体验
+
+7. Gateway模型
+
+   - WebFlux是什么
+
+     传统的Web框架，比如说：Struts2，SpringMVC等都是基于ServletAPI与Servlet容器基础上运行的。
+
+     但是在Servlet3.1之后有了异步非阻塞的支持。而WebFlux 是一个典型非阻塞异步的框架，它的核心是基于Reactor的相关API实现的。相对于传统的Web框架来说，它可以在诸如Netty，Undertow及支持Servlet3.1的容器上。非阻塞式+函数式编程（Spring 5必须让你使用Java 8）
+
+     Spring WebFlux是Spring 5.0 引入的新的响应式框架，区别于Spring MVC，它不需要依赖ServletAPI，他是完全异步非阻塞的，并且基于Reactor来实现响应式流规范。
+
+   ​	
+
+### 8.2三大核心概念
+
+- Route（路由）
+
+  路由是构建网关的基本模块，它由ID，目标URI，一系列的断言和过滤器组成，如果断言为true则匹配该路由
+
+- Predicate（断言）
+
+  参考的是Java8的java.util.funcation.Predicate，开发人员按可以匹配HTTP请求中的所有内容（例如请求头或请求参数），如果请求与断言相匹配则进行路由
+
+- Filter（过滤器）
+
+  指的是Spring框架中GatewayFilter的实例，使用过滤器，可以在请求被路由前或者之后对请求进行修改。
+
+- 总结
+
+### 8.3Gateway工作流程
+
+### 8.4入门配置
+
+1. pom
+
+   ```xml
+   <dependencies>
+       <dependency>
+           <groupId>org.springframework.cloud</groupId>
+           <artifactId>spring-cloud-starter-gateway</artifactId>
+       </dependency>
+       <!-- eureka-server -->
+       <dependency>
+           <groupId>org.springframework.cloud</groupId>
+           <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+           <exclusions>
+               <exclusion>
+                   <groupId>org.springframework.boot</groupId>
+                   <artifactId>spring-boot-starter-web</artifactId>
+               </exclusion>
+           </exclusions>
+       </dependency>
+       <dependency>
+           <groupId>org.springframework</groupId>
+           <artifactId>spring-webmvc</artifactId>
+       </dependency>
+   </dependencies>
+   ```
+
+2. yml
+
+   ```yml
+   server:
+     port: 9527
+   
+   spring:
+     application:
+       name: cloud-gateway
+     cloud:
+       gateway:
+         routes:
+           - id: payment_routh #payment_toute # 路由的id，没有固定规则但要求唯一，建议配合服务名
+             uri: http://localhost:8001 #匹配后提供服务的路由地址
+             predicates:
+               - Path=/payment/get/**  # 断言，路径和匹配的进行路由
+   
+           - id: payment_routh2
+             uri: http://localhost:8001
+             predicates:
+               - Path=/payment/lb/**
+   
+   eureka:
+     instance:
+       hostname: cloud-gateway-service
+     client:
+       service-url:
+         register-with-eureka: true
+         fetch-registry: true
+         defaultZone: http://eureka7001.com:7001/eureka
+   ```
+
+3. 配置案例：通过9527网关访问到外网的百度新闻地址
+
+   ```java
+   /**
+    * @Author Liuyunda
+    * @Date 2020/11/16 22:10
+    * @Email man021436@163.com
+    * @Description: DOTO
+    */
+   @Configuration
+   public class GatewayConfig {
+   
+       /**
+        * @Description: 配置了一个id为route-name的路由规则
+        * 当访问http://localhost:9527/guonei时自动转发到地址http://news.baidu.com/guonei
+        * @Param: [routeLocatorBuilder]
+        * @return: org.springframework.cloud.gateway.route.RouteLocator
+        * @Author: Liuyunda
+        * @Date: 2020/11/16
+        */
+       @Bean
+       public RouteLocator customRouteLocator(RouteLocatorBuilder routeLocatorBuilder){
+           RouteLocatorBuilder.Builder routes = routeLocatorBuilder.routes();
+           routes.route("route_lyd1",
+                   r -> r.path("/guonei")
+                           .uri("http://news.baidu.com/guonei")).build();
+           return routes.build();
+       }
+   }
+   
+   ```
+
+   
+
+### 8.5通过微服务名实现动态路由
+
+1. 默认情况下Gateway会根据注册中心注册的服务列表以注册中心上微服务名为路径创建**动态路由进行转发，从而实现动态路由的功能**
+
+   ```yml
+   server:
+     port: 9527
+   
+   spring:
+     application:
+       name: cloud-gateway
+     cloud:
+       gateway:
+         discovery:
+           locator:
+             enabled: true  # 开启从注册中心动态创建路由的功能，利用微服务名进行路由
+         routes:
+           - id: payment_routh #payment_toute # 路由的id，没有固定规则但要求唯一，建议配合服务名
+   #          uri: http://localhost:8001 #匹配后提供服务的路由地址
+             uri: lb://CLOUD-PAYMENT-SERVICE #匹配后提供服务的路由地址
+             predicates:
+               - Path=/payment/get/**  # 断言，路径和匹配的进行路由
+   
+           - id: payment_routh2
+   #          uri: http://localhost:8001
+             uri: lb://CLOUD-PAYMENT-SERVICE #匹配后提供服务的路由地址
+             predicates:
+               - Path=/payment/lb/**
+   
+   eureka:
+     instance:
+       hostname: cloud-gateway-service
+     client:
+       service-url:
+         register-with-eureka: true
+         fetch-registry: true
+         defaultZone: http://eureka7001.com:7001/eureka
+   ```
+
+   
+
+### 8.6Predicate的使用
+
+Predicate 就是为了实现一组匹配规则，让请求过来找到对应的Route进行处理
+
+常用的Route Predicate
+
+1. After Route Predicate/Before Route Predicate/Between Route Predicate
+
+   ```yml
+   predicates:
+     - Path=/payment/lb/**
+     - After=2020-11-16T23:26:40.327+08:00[Asia/Shanghai]
+   ```
+
+2. Cookie Route Predicate
+
+   需要两个参数一个是Cookie name，一个是正则表达式。路由规则会通过获取对应的Cookie  name 和正则表达式去匹配，如果匹配上就会执行路由，如果没有匹配上则不执行
+
+   ```yml
+   predicates:
+     - Path=/payment/lb/**
+     - Cookie=username,lyd
+   ```
+
+   ![image-20201116233844509](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201116233844509.png)
+
+3. Header Route Predicate
+
+   两个参数：属性名称，正则表达式。都匹配则执行
+
+   ```yml
+   predicates:
+     - Path=/payment/lb/**
+     - Header=X-Request-Id,\d+ 
+   ```
+
+   ![image-20201116234311778](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201116234311778.png)
+
+4. Host Route Predicate
+
+   接收一组参数，一组匹配的域名列表，这个模版是一个ant分隔的模版，用.号作为分隔符，它通过参数中的主机地址作为匹配规则。
+
+   ```yml
+   predicates:
+     - Path=/payment/lb/**
+     - Host=**.com.lyd
+   
+   ```
+
+   路由会匹配Host诸如：`www.com.lyd` 或 `beta.com.lyd`或等请求
+
+5. Method Route Predicate
+
+   ```yml
+   predicates:
+     - Path=/payment/lb/**
+     - Method=GET
+   ```
+
+   路由会匹配到所有GET方法的请求。
+
+6. Path Route Predicate
+
+   Path Route Predicate Factory使用的是path列表作为参数，使用Spring的`PathMatcher`匹配path，可以设置可选变量。
+
+   ```yml
+   predicates:
+     - Path=/payment/lb/**
+   ```
+
+7. Query Route Predicate
+
+   Query Route Predicate Factory可以通过一个或两个参数来匹配路由，一个是查询的name，一个是查询的正则value。
+
+   ```yml
+   predicates:
+     - Path=/payment/lb/**
+     - Query=username,123
+   ```
+
+   
+
+### 8.7Filter的使用
+
+1. Spring Cloud Gateway的Filter
+
+   1. 生命周期
+      1. pre
+      2. post
+   2. 种类
+      1. GatewayFilter
+      2. GlobalFilter
+
+2. 自定义过滤器
+
+   1. 实现两个接口GlobalFilter，Ordered
+
+      ```java
+      /**
+       * @Author Liuyunda
+       * @Date 2020/11/17 0:00
+       * @Email man021436@163.com
+       * @Description: DOTO
+       */
+      @Component
+      public class MyGlobalFilter implements GlobalFilter, Ordered {
+          @Override
+          public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+              System.out.println("************come in myGlobalFilter: "+new Date());
+              String uname = exchange.getRequest().getQueryParams().getFirst("uname");
+              if (uname==null){
+                  System.out.println("************非法用户,用户名为："+uname);
+                  exchange.getResponse().setStatusCode(HttpStatus.NOT_ACCEPTABLE);
+                  return exchange.getResponse().setComplete();
+              }
+              return chain.filter(exchange);
+          }
+      
+          @Override
+          public int getOrder() {
+              return 0;
+          }
+      }
+      ```
+
+      
