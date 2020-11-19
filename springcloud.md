@@ -895,4 +895,266 @@ Predicate 就是为了实现一组匹配规则，让请求过来找到对应的R
       }
       ```
 
-      
+## 9.SpringCloud Config分布式配置中心
+
+### 9.1概述
+
+外部的集中式的、动态的配置管理设施，SpringCloud提供了ConfigServer来解决这个问题
+
+- 是什么
+
+  SpringCloud Config为微服务架构中的微服务提供集团话的外部配置支持，配置服务器为各个不同微服务应用的所有环境提供了一个中心化的外部配置
+
+- 怎么用
+
+  分为服务端和客户端两部分
+
+  服务端也称为分布式配置中心，他是一个独立的微服务应用，用来连接配置服务器并为客户端提供获取配置信息，加密/解密信息等访问接口。
+
+  客户端则是通过制定的配置中心来管理应用资源，有自己与业务相关的配置内容，并在启动的时候从配置中心获取和加载配置信息配置服务器默认采用git来存储配置信息，这样就有助于对环境配置进行版本管理，并且可以通过git客户端工具来方便的管理和访问配置内容。
+
+- 能干嘛
+  1. 集中管理配置文件
+  2. 不同环境不同配置，动态化的配置更新，分环境部署比如dev/test/prod/beta/release
+  3. 运行期间动态调整配置，不再需要在每个服务部署的机器上编写配置文件，服务会向配置中心统一拉取配置自己的信息
+  4. 当配置发生变动时，服务不需要重启即可感知到配置的变化并应用新的配置
+  5. 将配置中心以Rest接口的形式暴露
+- 与github整合
+
+### 9.2Config服务端配置与测试
+
+- 新建github仓库
+
+- 新建module
+
+- pom
+
+  ```xml
+      <dependencies>
+          <dependency>
+              <groupId>org.springframework.cloud</groupId>
+              <artifactId>spring-cloud-config-server</artifactId>
+          </dependency>
+          <dependency>
+              <groupId>org.springframework.cloud</groupId>
+              <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+          </dependency>
+          <dependency>
+              <groupId>org.springframework.boot</groupId>
+              <artifactId>spring-boot-starter-web</artifactId>
+          </dependency>
+          <dependency>
+              <groupId>org.springframework.boot</groupId>
+              <artifactId>spring-boot-starter-actuator</artifactId>
+          </dependency>
+          <dependency>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <optional>true</optional>
+          </dependency>
+          <dependency>
+              <groupId>org.springframework.boot</groupId>
+              <artifactId>spring-boot-starter-test</artifactId>
+              <scope>test</scope>
+          </dependency>
+  
+      </dependencies>
+  ```
+
+- yml
+
+  ```yml
+  server:
+    port: 3344
+  spring:
+    application:
+      name: cloud-config-center #注册进Eureka服务器的微服务名
+    cloud:
+      config:
+        server:
+          git:
+            uri: https://github.com/SexyJava/springcloud-config.git #GitHub上面的git仓库名字
+            search-paths:
+              - springcloud-config
+        label: master #读取分支
+  
+  
+  #服务注册到eureka地址
+  eureka:
+    client:
+      service-url:
+        defaultZone: http://localhost:7001/eureka
+  
+  ```
+
+- 启动类注解
+
+  ```java
+  @SpringBootApplication
+  @EnableConfigServer
+  public class ConfigCenterMain3344 {
+      public static void main(String[] args) {
+          SpringApplication.run(ConfigCenterMain3344.class,args);
+      }
+  }
+  ```
+
+- 通过http://localhost:3344/master/config-dev.yml访问配置文件
+
+- 常用配置读取规则（label 分支，application 服务名，profile 环境）
+  - /{label}/{application}-{profile}.yml
+  - /{application}-{profile}.yml
+  - /{application}/{profile}[/{label}]
+
+### 9.3Config客户端配置与测试
+
+application.yml与bootstrap.yml的区别
+
+- application.yml是用户级的资源配置项，bootstrap.yml是系统级的，优先级更高
+- SpringCloud 会创建一个“Bootstrap Context”，作为Spring 应用的“Application Context”的**父上下文**。初始化的时候，“Bootstrap Context”负责从**外部源**加载配置属性并解析配置。这两个上下文共享一个从外部获取的“Environment”
+- “Bootstrap”属性有高优先级，默认情况下，他们不会被本地配置覆盖。“Bootstrap Context”和“Application Context”有着不同的约定，所以新增了一个“Bootstrap.yml”文件，保证“Bootstrap Context”和“Application Context”配置的分离
+- 要将Client模块下的application.yml文件改为bootstrap.yml这是很关键的，因为Bootstrap是比application先加载的，优先级更高。
+
+1. 新建module
+
+2. pom
+
+   ```xml
+   <dependencies>
+           <dependency>
+               <groupId>org.springframework.cloud</groupId>
+               <artifactId>spring-cloud-starter-config</artifactId>
+           </dependency>
+           <dependency>
+               <groupId>org.springframework.cloud</groupId>
+               <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+           </dependency>
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-web</artifactId>
+           </dependency>
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-actuator</artifactId>
+           </dependency>
+           <dependency>
+               <groupId>org.projectlombok</groupId>
+               <artifactId>lombok</artifactId>
+               <optional>true</optional>
+           </dependency>
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-test</artifactId>
+               <scope>test</scope>
+           </dependency>
+   
+       </dependencies>
+   ```
+
+3. bootstrap.yml
+
+   ```yml
+   server:
+     port: 3355
+   spring:
+     application:
+       name: config-client
+     cloud:
+       #config客户端配置
+       config:
+         label: master #分支名称
+         name: config #配置文件名称
+         profile: dev #读取后缀名称
+         uri: http://localhost:3344
+   
+   #服务注册到eureka地址
+   eureka:
+     client:
+       service-url:
+        defaultZone: http://localhost:7001/eureka
+   
+   ```
+
+4. 主启动类
+
+   ```java
+   @EnableEurekaClient
+   @SpringBootApplication
+   public class ConfigClientMain3355 {
+       public static void main(String[] args) {
+           SpringApplication.run(ConfigClientMain3355.class,args);
+       }
+   }
+   ```
+
+5. 业务类
+
+   ```java
+   @RestController
+   public class ConfigClientController {
+       @Value("${config.info}")
+       private String configInfo;
+   
+       @GetMapping("/configInfo")
+       public String getConfigInfo(){
+           return configInfo;
+       }
+   }
+   ```
+
+6. 通过http://localhost:3355/configInfo访问返回配置信息
+
+7. 动态刷新问题，更改配置信息后，ConfigServer配置中心立刻响应，但是客户端并没有响应，需要重启或重新加载
+
+### 9.4Config客户端之动态刷新
+
+1. POM引入actuator监控
+
+   ```xml
+   <dependency>
+       <groupId>org.springframework.boot</groupId>
+       <artifactId>spring-boot-starter-actuator</artifactId>
+   </dependency>
+   ```
+
+2. 修改YML，暴露监控端口
+
+   ```yml
+   
+   #暴露监控端点
+   management:
+     endpoints:
+       web:
+         exposure:
+           include: "*"
+   ```
+
+3. @RefreshScope业务类Controller修改
+
+   ```java
+   @RestController
+   @RefreshScope
+   public class ConfigClientController {
+       @Value("${config.info}")
+       private String configInfo;
+   
+       @GetMapping("/configInfo")
+       public String getConfigInfo(){
+           return configInfo;
+       }
+   }
+   ```
+
+4. 手动发送post请求刷新
+
+   ```
+   curl -X POST "http://localhost:3355/actuator/refresh"
+   ```
+
+   请求成功后
+
+   ![image-20201120000943706](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201120000943706.png)
+
+仍然存在问题：如果存在多台客户端每个微服务都要执行一次post请求，有些繁琐
+
+一次通知处处生效->**消息总线**
