@@ -1220,4 +1220,78 @@ application.yml与bootstrap.yml的区别
 
 ### 10.3SpringCloud Bus动态刷新全局广播
 
+1. 设计思想
+
+   1. 利用消息总线触发一个客户端/bus/refresh，而刷新所有客户端的配置（不合适）
+   2. 利用消息总线触发一个服务端ConfigServer的/bus/refresh端点，而刷新所有客户端
+
+2. 3344修改配置（3355与3366同下）
+
+   1. pom
+
+      ```xml
+      <!--添加消息总线支持-->
+      <dependency>
+          <groupId>org.springframework.cloud</groupId>
+          <artifactId>spring-cloud-starter-bus-amqp</artifactId>
+      </dependency>
+      ```
+
+   2. properties
+
+      ```yml
+      server:
+        port: 3344
+      spring:
+        application:
+          name: cloud-config-center #注册进Eureka服务器的微服务名
+        cloud:
+          config:
+            server:
+              git:
+                uri: https://github.com/SexyJava/springcloud-config.git #GitHub上面的git仓库名字
+                search-paths:
+                  - springcloud-config
+            label: master #读取分支
+        #rabbitmq相关配置
+        rabbitmq:
+          host: localhost
+          port: 5672
+          username: guest
+          password: guest
+      
+      
+      #服务注册到eureka地址
+      eureka:
+        client:
+          service-url:
+            defaultZone: http://localhost:7001/eureka
+      
+      #rabbitmq相关配置，暴露bus刷新配置的端点
+      management:
+        endpoints:
+          web:
+            exposure:
+              include: 'bus-refresh'
+      ```
+
+   3. 发送Post请求
+
+      ```shell
+      curl -X POST "http://localhost:3344/actuator/bus-refresh"
+      ```
+
+   4. 一次发送处处生效
+
 ### 10.3SpringCloud Bus动态刷新定点通知
+
+只通知3355不通知3366
+
+```shell
+curl -X POST "http://localhost:3344/actuator/bus-refresh/{destination}"
+```
+
+destination目的地->config-client:3355
+![image-20201125222223436](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201125222223436.png)
+
+微服务名称加端口号
