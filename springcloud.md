@@ -1295,3 +1295,62 @@ destination目的地->config-client:3355
 ![image-20201125222223436](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201125222223436.png)
 
 微服务名称加端口号
+
+
+
+## 11.SpringCloud Stream 消息驱动
+
+> 是一个构建消息驱动微服务的框架
+>
+> 屏蔽底层消息中间件的差异，降低切换成本，统一消息的编程模型
+>
+> 目前仅支持RabbitMQ 和Kafka
+
+### 11.1 Binder
+
+- 通过定义绑定器Binder作为中间层，实现了应用程序与消息中间件细节之间的隔离
+  - input对应生产者
+  - output对应消费者
+
+- SpringCloud Stream标准流程套路
+
+  ![image-20201126233302636](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201126233302636.png)
+  - Binder 
+
+    很方便的连接中间件，屏蔽差异
+
+  - Channel
+
+    通道，是队列Queue的一种抽象，在消息通讯系统中就是实现存储和转发的媒介，通过Channel对队列进行配置
+
+  - Source和Sink
+
+    简单的理解为参照对象是SpringCloud Stream自身，从Stream发布消息就是输出，接收消息就是输入 
+
+- 编码API和常用注解
+
+  ![image-20201126234124955](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201126234124955.png)
+
+  1. Middleware
+
+     中间件，目前支持RabbitMQ和Kafka
+
+  2. Binder
+
+     Binder是应用与消息中间件之间的封装，目前实行了Kafka和RabbitMQ的Binder，通过Binder可以很方便的连接中间件，可以动态的改变消息类型（对应kafka的topic，RabbitMQ的exchange），这些都可以通过配置文件来实现
+
+  3. Input
+
+     注解标识输入通道，通过该输入通道接收到的消息进入应用程序
+
+  4. Output
+
+     注解标识输出通道，发布的消息将通过该通道离开应用程序
+
+  5. StreamListener
+
+     监听队列，用于消费者的队列的消息接收
+
+  6. EnableBinding
+
+     指信道Channel和exchange绑定在一起
