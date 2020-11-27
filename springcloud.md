@@ -1354,3 +1354,30 @@ destination目的地->config-client:3355
   6. EnableBinding
 
      指信道Channel和exchange绑定在一起
+
+### 11.2 分组消费和持久化
+
+存在两个问题
+
+1. 重复消费（消息分组，不同组是可以全面消费的（重复消费），同一组内会发生竞争关系，只有其中一个可以消费）
+
+   - 导致原因：默认分组group是不同的，组流水号不一样，被认为不同组，可以消费
+
+   - 如何解决：自定义配置分组与，自定义配置分为同一个组，解决重复消费问题
+
+     8802与8803配置成相同的组
+
+     ```yml
+           bindings: #服务的整合处理
+             input: #这个名字是一个通道的名称
+               destination: studyExchange #标识要使用的Exchange名称定义
+               content-type: application/json #设置消息类型，本次为json，文本则设置“text/plain”
+               binder: defaultRabbit #设置要绑定的消息服务的具体设置
+               group: lyd
+     ```
+
+     
+
+2. 消息持久化（group）
+
+   停掉8802和8803，然后8801发送4条消息，8802去掉group的配置，重启，会出现消息丢失，8803不修改配置直接重启可以接收到8801发送的4条消息
