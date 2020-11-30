@@ -12,6 +12,10 @@
     <artifactId>cloud-consumer-order80</artifactId>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-zipkin</artifactId>
+        </dependency>
         <!--引用自己定义的api通用包-->
         <dependency>
             <groupId>com.lyd.springcloud</groupId>

@@ -1381,3 +1381,24 @@ destination目的地->config-client:3355
 2. 消息持久化（group）
 
    停掉8802和8803，然后8801发送4条消息，8802去掉group的配置，重启，会出现消息丢失，8803不修改配置直接重启可以接收到8801发送的4条消息
+
+
+
+## 12.SpringCloud Sleuth 分布式请求链路跟踪
+
+### 12.1概述
+
+SpringCloud Sleuth 提供了一套完整的服务跟踪的解决方案，在分布式系统中提供追踪解决方案并且兼容支持了zipkin
+
+### 12.2搭建链路监控步骤
+
+1. zipkin
+   1. [dl.bintray.com/openzipkin/maven/io/zipkin/java/zipkin-server/](http://dl.bintray.com/openzipkin/maven/io/zipkin/java/zipkin-server/)
+   2. java -jar 运行jar包
+   3. http://127.0.0.1:9411/zipkin/
+   4. 名词解释：
+      - Trace：类似于树结构的Span集合，标识一条调用链路，存在唯一标识
+      - span：表示调用链路来源，通俗的理解span就是一次请求信息
+2. 服务提供者
+3. 服务消费者
+4. 访问zipkin网站，查看调用链路
