@@ -1402,3 +1402,17 @@ SpringCloud Sleuth 提供了一套完整的服务跟踪的解决方案，在分�
 2. 服务提供者
 3. 服务消费者
 4. 访问zipkin网站，查看调用链路
+
+
+
+## 13.SpringCloud Alibaba Nacos 服务注册和配置中心
+
+1. nacos名字构成：前四个字母为naming和configuration的前两个字母，最后的s为service
+2. 一个更易于构建云原生应用的动态服务发现、配置管理和服务管理平台，就是注册中心加配置中心的组合，等价于Eureka+Config+Bus
+3. 官网：https://nacos.io/zh-cn/
+4. 下载地址：https://github.com/alibaba/nacos/releases/tag/1.1.4    --->https://pan.baidu.com/s/1oTYQuqz1oMM5kTE_tl-8JQ    92gx
+5. bin 目录下运行start.cmp 
+6. 访问localhost:8848/nacos
+7. 帐号密码为nacos
+
+## 14.SpringCloud Alibaba
