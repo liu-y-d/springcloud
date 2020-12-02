@@ -1407,12 +1407,52 @@ SpringCloud Sleuth 提供了一套完整的服务跟踪的解决方案，在分�
 
 ## 13.SpringCloud Alibaba Nacos 服务注册和配置中心
 
+- 服务注册
+
 1. nacos名字构成：前四个字母为naming和configuration的前两个字母，最后的s为service
+
 2. 一个更易于构建云原生应用的动态服务发现、配置管理和服务管理平台，就是注册中心加配置中心的组合，等价于Eureka+Config+Bus
+
 3. 官网：https://nacos.io/zh-cn/
+
 4. 下载地址：https://github.com/alibaba/nacos/releases/tag/1.1.4    --->https://pan.baidu.com/s/1oTYQuqz1oMM5kTE_tl-8JQ    92gx
+
 5. bin 目录下运行start.cmp 
+
 6. 访问localhost:8848/nacos
+
 7. 帐号密码为nacos
+
+8. 服务注册中心对比
+
+   ![image-20201202220651466](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201202220651466.png)
+
+   - C是所有节点在同一时间的看到的数据是一致的；而A的定义是所有的请求都会相应
+   - 如果不需要存储服务级别的信息且服务实例是通过nacos-client注册，并能够保持心跳上报，那么可以选择AP模式，当前主流的服务如SpringCloud和Dubbo服务，都适用与AP模式，AP模式为了服务的可能性而减弱了一致性，因此AP模式下只支持注册临时实例
+   - 如果需要在服务级别编辑或者存储配置信息，那么CP是必须的，K8S服务和DNS服务则适用与CP模式。CP模式下则支持注册持久化实例，此时则是以Raft协议为集群运行模式，该模式下注册实例之前必须先注册服务，如果服务不存在，则会返回错误。
+   - 切换指令：curl -X PUT '$NACOS_SERVER:8848/nacos/v1/ns/operator/switches?enty=serverMode&value=CP'
+
+- 配置中心
+
+  1. 配置列表创建配置
+
+  2. Data ID : nacos-config-client-dev.yaml
+
+  3. 配置内容选yaml
+
+     ```yml
+     config: 
+         info: wonima,version=2
+     ```
+
+  4. 访问3377，实现动态刷新
+
+- 分类配置
+
+  NameSpace + Group + Data ID
+
+  ![image-20201202231856124](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201202231856124.png)
+
+  ![image-20201202233917848](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201202233917848.png)
 
 ## 14.SpringCloud Alibaba
