@@ -1454,5 +1454,123 @@ SpringCloud Sleuth 提供了一套完整的服务跟踪的解决方案，在分�
   ![image-20201202231856124](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201202231856124.png)
 
   ![image-20201202233917848](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201202233917848.png)
+  
+- Nacos集群和持久化配置
 
-## 14.SpringCloud Alibaba
+  - Nacos采用了集中式存储的方式来支持集群化部署，目前只支持MySQL数据库的存储
+
+  - 三种部署模式
+
+    - 单机模式-用于测试和单机试用
+    - 集群模式-用于生产环境，确保高可用
+    - 多集群模式-用于多数据中心场景
+
+  - Nacos默认自带的是嵌入式数据库derby
+
+  - derby到mysql的切换配置步骤
+
+    - nacos-server-1.1.4\nacos\conf目录下找到sql脚本
+
+      - nacos-mysql.sql
+      - 执行脚本
+
+    - nacos-server-1.1.4\nacos\conf目录下找到application.properties
+
+      ```properties
+      spring.datasource.platform=mysql
+      
+      db.num=1
+      db.url.0=jdbc:mysql://127.0.0.1:3306/数据库名?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true
+      db.user=root
+      db.password=123456
+      ```
+
+  - Linux版Nacos+MySQL生产环境配置
+
+## 14.SpringCloud Alibaba Sentinel实现熔断与限流
+
+1. 主要特征
+
+   ![](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215221040883.png)
+
+2. 分为两部分
+
+   1. 核心库（java客户端）不依赖任何框架/库，能够运行于所有java运行是环境，同时对Dubbo和Spring Cloud等框架有较好的支持
+   2. 控制台（Dashboard）基于SpringBoot开发，打包后直接可运行，不需要额外的tomcat等应用容器
+
+3. 运行命令
+
+   1. 前提
+
+      - java8
+      - 8080端口不能被占用
+
+   2. 命令
+
+      java -jar sentinel-dashboard-1.7.2.jar
+
+4. 创建8401
+
+5. sentinel采用懒加载，需要执行一次请求
+
+6. 效果
+
+   ![image-20201215223421941](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215223421941.png)
+
+7. sentinel流控规则
+
+   - 基本介绍
+
+     ![image-20201215223759748](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215223759748.png)
+
+     1. 资源名：唯一名称，默认请求路径
+     2. 针对来源：Sentinel可以针对调用者进行限流，填写微服务名，默认default（不区分来源）
+     3. 阈值类型/单机阈值
+        - QPS（每秒的请求数）：当调用该api的QPS达到阈值的时候，进行限流
+        - 线程数：当调用该api的线程数达到阈值的时候，进行限流
+     4. 是否集群：不需要集群
+     5. 流控模式：
+        - 直接 ：api达到限流条件时，直接限流
+        - 关联：当天的资源达到阈值时，就限流自己
+        - 链路：只记录指定链路上的流量（指定资源从入口资源进来的流量，如果达到阈值，就进行限流）【api级别 的针对来源】
+     6. 流控效果：
+        - 快速失败：直接失败，抛异常
+        - Warm Up：根据cold Factor（冷加载因子，默认3）的值，从阈值/cold Factor，经过预热时长，才达到设置的QPS阈值
+        - 排队等待：匀速排队，让请求以匀速的速度通过，阈值类型必须设置为QPS，否则无效
+
+   - 流控模式
+
+     1. 直接（默认）
+        - 直接->快速失败（系统默认）
+        - ![image-20201215225159690](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215225159690.png)
+        - 快速访问testA
+        - ![image-20201215225230225](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215225230225.png)
+     2. 关联
+        - 当与A关联的资源B达到阈值后，就限流A自己
+        - postman并发秘籍访问testB
+        - ![image-20201215231514928](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215231514928.png)
+        - ![image-20201215231607961](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215231607961.png)
+        - ![image-20201215231646569](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215231646569.png)
+        - ![image-20201215231836387](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215231836387.png)
+        - 导致A挂了
+     3. 链路
+        - ![image-20201215232137908](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215232137908.png)
+        - 入口限流导致整条链路限流
+
+   - 流控效果
+
+     - 直接->快速失败（默认）
+       - 直接失败，抛出异常->Blocked by Sentinel（flow limiting）
+       - 源码：com.alibaba.csp.sentinel.slots.block.flow.controller.DefaultController;
+     - 预热（Warm Up）
+       - 默认cold factor 为3，即请求QPS从阈值/3开始，经过预热时长逐渐上升至设定的QPS阈值
+       - ![image-20201215233643409](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215233643409.png)
+       - 源码：com.alibaba.csp.sentinel.slots.block.flow.controller.WarmUpController
+     - 排队等待
+       - 匀速排队让请求以均匀的速度通过，阈值类型必须设成QPS，否则无效
+       - ![image-20201215234334265](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215234334265.png)
+       - ![image-20201215234451826](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215234451826.png)
+       - 源码：com.alibaba.csp.sentinel.slots.block.flow.controller.RateLimiterController
+
+     
+
