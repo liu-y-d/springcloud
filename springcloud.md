@@ -1,4 +1,4 @@
-# SpringCloud笔记
+SpringCloud笔记
 
 ## 1.父项目构建
 
@@ -1572,5 +1572,189 @@ SpringCloud Sleuth 提供了一套完整的服务跟踪的解决方案，在分�
        - ![image-20201215234451826](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201215234451826.png)
        - 源码：com.alibaba.csp.sentinel.slots.block.flow.controller.RateLimiterController
 
-     
+8. 降级规则
 
+   ![image-20201216212135494](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201216212135494.png)
+
+   1. RT（平均相应时间，秒级）
+
+      平均响应时间 超出阈值且在时间窗口内通过的请求>=5，两个条件同时满足后触发降级，窗口期过后关闭断路器，RT最大4900（更大的需要通过-Dcsp.sentinel.statistic.max.rt=xxxx才能生效）
+
+   2. 异常比例（秒级）
+
+      QPS>=5且异常比例（秒级统计）超过阈值时，触发降级；时间窗口结束后，关闭降级
+
+   3. 异常数（分钟级）
+
+      异常数（分钟统计）超过阈值时，触发降级；时间窗口结束后，关闭降级
+
+   4. 注意
+
+      - Sentinel的断路器是没有半开状态的
+
+        半开的状态，系统自动去检测是否请求有一场，没有异常就关闭断路器恢复使用，有异常则继续打开断路器不可用（Hystrix）
+
+   5. 实战
+
+      1. RT
+
+         ![image-20201216220643283](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201216220643283.png)
+
+         ![image-20201216220619627](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201216220619627.png)
+
+         ![image-20201216220630040](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201216220630040.png)
+
+      2. 异常比例
+
+         异常比率的阈值范围【0.0-1.0】对应0%-100%
+
+         
+
+         ![image-20201216221829920](C:\Users\刘云达\AppData\Roaming\Typora\typora-user-images\image-20201216221829920.png)
+
+         ![image-20201216220630040](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201216220630040.png)
+
+      3. 异常数
+
+         当资源近一分钟的异常数超过阈值之后会进行熔断。注意由于统计时间窗口是分钟级别，若timeWindow小于60s，则结束熔断状态后仍可能再进入熔断状态，**时间窗口一定要大于60s**
+
+         ![image-20201216222408949](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201216222408949.png)
+
+         达到5异常后，熔断降级
+
+9. 热点规则
+
+   ![image-20201216222739618](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201216222739618.png)
+
+   1. ​	源码
+
+      com.alibaba.csp.sentinel.slots.block.BlockException
+
+   2. 参数例外项
+
+      ![image-20201216225206493](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201216225206493.png)
+
+      第0个参数平时一秒一个当他等于5的时候阈值可达到200
+
+      @SentinelResource 处理的是Sentinel控制台配置的违规情况，有blockHandler方法配置的兜底处理
+
+      RuntimeException 这是java运行时异常，@SentinelResource 不管
+
+10. @SentinelResource 
+
+    1. 客户定义限流处理
+
+       ```java
+       public class CustomerBlockHandler {
+       
+           public static CommonResult handlerException1(BlockException exception){
+               return new CommonResult(4444,"按客户自定义,global handlerException----1");
+           }
+           public static CommonResult handlerException2(BlockException exception){
+               return new CommonResult(4444,"按客户自定义,global handlerException----2");
+           }
+       }
+       ```
+
+       ```java
+       @GetMapping("/rateLimit/customerBlockHandler")
+       @SentinelResource(value = "customerBlockHandler",blockHandlerClass = CustomerBlockHandler.class,blockHandler = "handlerException2")
+       public CommonResult customerBlockHandler(){
+           return new CommonResult(200,"按客户自定义",new Payment(2020L,"serial003"));
+       }
+       ```
+
+    2. 属性说明
+
+       1. **value**
+
+          资源名称，必需项，因为需要通过resource name找到对应的规则，这个是必须配置的。
+
+       2. **entryType**
+
+          entry 类型，可选项，
+          有IN和OUT两个选项，默认为 EntryType.OUT。
+
+          ```java
+          public enum EntryType {
+              IN("IN"),
+              OUT("OUT");
+          }
+          ```
+
+       3. **blockHandler**
+
+          blockHandler 对应处理 BlockException 的函数名称，可选项。
+          blockHandler 函数访问范围需要是 public，返回类型需要与原方法相匹配，
+          参数类型需要和原方法相匹配并且最后加一个额外的参数，类型为 BlockException。
+
+       4. **blockHandlerClass**
+
+          blockHandler 函数默认需要和原方法在同一个类中，如果希望使用其他类的函数，
+          则需要指定 blockHandlerClass 为对应的类的 Class 对象，注意对应的函数必需为 static 函数，否则无法解析。
+
+       5. **fallback**
+
+          fallback 函数名称，可选项，用于在抛出异常的时候提供 fallback 处理逻辑。
+          fallback 函数可以针对所有类型的异常（除了 exceptionsToIgnore 里面排除掉的异常类型）进行处理。
+
+       6. **fallbackClass**
+
+          fallbackClass的应用和blockHandlerClass类似，fallback 函数默认需要和原方法在同一个类中。
+          若希望使用其他类的函数，则可以指定 fallbackClass 为对应的类的 Class 对象，注意对应的函数必需为 static 函数，否则无法解析。
+
+       7. **defaultFallback**（since 1.6.0）
+
+          如果没有配置defaultFallback方法，默认都会走到这里来。
+          默认的 fallback 函数名称，可选项，通常用于通用的 fallback 逻辑。
+          默认 fallback 函数可以针对所有类型的异常（除了 exceptionsToIgnore 里面排除掉的异常类型）进行处理。
+          若同时配置了 fallback 和 defaultFallback，则只有 fallback 会生效。
+
+       8. **exceptionsToIgnore**（since 1.6.0）
+
+          用于指定哪些异常被排除掉，不会计入异常统计中，也不会进入 fallback 逻辑中，而是会原样抛出。
+
+    3. 三个核心api
+
+       1. SphU定义资源
+       2. Tracer定义统计
+       3. ContextUtil定义了上下文
+
+11. 服务熔断功能
+
+    1. Sentinel整合ribbon+OpenFeign+fallback
+
+    2. Ribbon系列
+
+    3. Feign系列
+
+    4. 熔断框架比较
+
+       ![image-20201217001650938](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201217001650938.png)
+
+       ![image-20201217001704651](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201217001704651.png)
+
+12. 规则持久化
+
+    1. 一旦重启应用，Sentinel规则将消失，生产环境需要将配置规则进行持久化
+
+    2. 将限流配置规则持久化进Nacos保存，只要刷新8401某个rest地址，Sentinel控制台的流控规则就能看到，只要Nacos里面的配置不删除，针对8401上Sentinel的流控规则则持久有效
+
+    3. ```yml
+           sentinel:
+             transport:
+               dashboard: localhost:8080 #配置Sentinel dashboard地址
+               port: 8719
+             datasource:
+               ds1:
+                 nacos:
+                   server-addr: localhost:8848
+                   dataId: cloudalibaba-sentinel-service
+                   groupId: DEFAULT_GROUP
+                   data-type: json
+                   rule-type: flow
+       ```
+
+       ![image-20201217002902585](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201217002902585.png)
+
+       ![image-20201217002947726](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201217002947726.png)
