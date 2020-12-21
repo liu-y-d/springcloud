@@ -1758,3 +1758,374 @@ SpringCloud Sleuth 提供了一套完整的服务跟踪的解决方案，在分�
        ![image-20201217002902585](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201217002902585.png)
 
        ![image-20201217002947726](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201217002947726.png)
+
+## 15.SpringCloud Alibaba Seata处理分布式事务
+
+### 15.1 分布式事务问题
+
+ 一次业务操作需要跨多个数据源或需要跨多个系统进行远程调用，就会产生分布式事务问题
+
+### 15.2 Seata简介
+
+Seata是一款开源的分布式事务解决方案，致力与在微服务架构下提供高性能和简单易用的分布式事务服务
+
+![image-20201221221704787](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201221221704787.png)
+
+1+3 全局唯一的事务id和三个组件
+
+处理过程：
+
+![image-20201221222116838](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201221222116838.png)
+
+1. TM向TC申请开启一个全局事务，全局事务创建成功并生成一个全局唯一的XID
+2. XID在微服务调用链路的上下文中传播
+3. RM向TC发起针对XID的全局提交或回滚决议
+4. TC调度XID下管辖的全部分支事务完成提交或回滚器请求
+
+怎么玩
+
+1. 本地@Transactional
+
+2. 全局@GlobalTransaactional
+
+   ![image-20201221223340302](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201221223340302.png)
+
+### 15.3 Seata-Server安装
+
+1. 解压
+
+2. 修改配置file.conf（先备份）
+
+3. 主要修改：自定义事务组名称+事务日志存储模式为db+数据库连接信息
+
+4. file.conf
+
+   1. Service模块
+
+      ```js
+      service {
+        #vgroup->rgroup
+        vgroup_mapping.my_test_tx_group = "lyd_test_group"
+        #only support single node
+        default.grouplist = "127.0.0.1:8091"
+        #degrade current not support
+        enableDegrade = false
+        #disable
+        disable = false
+        #unit ms,s,m,h,d represents milliseconds, seconds, minutes, hours, days, default permanent
+        max.commit.retry.timeout = "-1"
+        max.rollback.retry.timeout = "-1"
+      }
+      ```
+
+      
+
+   2. store模块
+
+      ```js
+      ## transaction log store
+      store {
+        ## store mode: file、db
+        mode = "db"
+      
+        ## file store
+        file {
+          dir = "sessionStore"
+      
+          # branch session size , if exceeded first try compress lockkey, still exceeded throws exceptions
+          max-branch-session-size = 16384
+          # globe session size , if exceeded throws exceptions
+          max-global-session-size = 512
+          # file buffer size , if exceeded allocate new buffer
+          file-write-buffer-cache-size = 16384
+          # when recover batch read size
+          session.reload.read_size = 100
+          # async, sync
+          flush-disk-mode = async
+        }
+      
+        ## database store
+        db {
+          ## the implement of javax.sql.DataSource, such as DruidDataSource(druid)/BasicDataSource(dbcp) etc.
+          datasource = "dbcp"
+          ## mysql/oracle/h2/oceanbase etc.
+          db-type = "mysql"
+          driver-class-name = "com.mysql.jdbc.Driver"
+          url = "jdbc:mysql://127.0.0.1:3306/seata"
+          user = "root"
+          password = "123456"
+          min-conn = 1
+          max-conn = 3
+          global.table = "global_table"
+          branch.table = "branch_table"
+          lock-table = "lock_table"
+          query-limit = 100
+        }
+      }
+      ```
+
+   3. 建seata库执行sql
+
+      ```sql
+      -- the table to store GlobalSession data
+      drop table if exists `global_table`;
+      create table `global_table` (
+        `xid` varchar(128)  not null,
+        `transaction_id` bigint,
+        `status` tinyint not null,
+        `application_id` varchar(32),
+        `transaction_service_group` varchar(32),
+        `transaction_name` varchar(128),
+        `timeout` int,
+        `begin_time` bigint,
+        `application_data` varchar(2000),
+        `gmt_create` datetime,
+        `gmt_modified` datetime,
+        primary key (`xid`),
+        key `idx_gmt_modified_status` (`gmt_modified`, `status`),
+        key `idx_transaction_id` (`transaction_id`)
+      );
+      
+      -- the table to store BranchSession data
+      drop table if exists `branch_table`;
+      create table `branch_table` (
+        `branch_id` bigint not null,
+        `xid` varchar(128) not null,
+        `transaction_id` bigint ,
+        `resource_group_id` varchar(32),
+        `resource_id` varchar(256) ,
+        `lock_key` varchar(128) ,
+        `branch_type` varchar(8) ,
+        `status` tinyint,
+        `client_id` varchar(64),
+        `application_data` varchar(2000),
+        `gmt_create` datetime,
+        `gmt_modified` datetime,
+        primary key (`branch_id`),
+        key `idx_xid` (`xid`)
+      );
+      
+      -- the table to store lock data
+      drop table if exists `lock_table`;
+      create table `lock_table` (
+        `row_key` varchar(128) not null,
+        `xid` varchar(96),
+        `transaction_id` long ,
+        `branch_id` long,
+        `resource_id` varchar(256) ,
+        `table_name` varchar(32) ,
+        `pk` varchar(36) ,
+        `gmt_create` datetime ,
+        `gmt_modified` datetime,
+        primary key(`row_key`)
+      );
+      
+      ```
+
+   4. 修改conf下的registry.conf配置文件
+
+      ```js
+      registry {
+        # file 、nacos 、eureka、redis、zk、consul、etcd3、sofa
+        type = "nacos"
+      
+        nacos {
+          serverAddr = "localhost:8848"
+          namespace = ""
+          cluster = "default"
+        }
+      }
+      ```
+
+   5. 先启动nacos
+
+   6. 在启动seata
+
+### 15.4 订单/库存/账户业务数据准备
+
+业务：下订单-扣库存-减账户余额
+
+1. 建库
+
+   ```sql
+   create database seata_storage;
+   create database seata_order;
+   create database seata_account;
+   ```
+
+   
+
+2. 建表
+
+   ```sql
+   use seate_account;
+   CREATE TABLE t_account(
+       id BIGINT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+       user_id BIGINT(11) DEFAULT NULL COMMENT '用户id',
+       total DECIMAL(10,0) DEFAULT NULL COMMENT '总额度',
+       used DECIMAL(10,0) DEFAULT NULL COMMENT '已用额度',
+       residue DECIMAL(10,0) DEFAULT 0 COMMENT '剩余可用额度'
+   )ENGINE=InnoDB AUTO_INCREMENT=7 CHARSET=utf8;
+   INSERT INTO t_account(id, user_id, total, used, residue) VALUES(1,1,1000,0,1000);
+   
+   use seata_order;
+   CREATE TABLE t_order(
+       id BIGINT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+       user_id BIGINT(11) DEFAULT NULL COMMENT '用户id',
+       product_id BIGINT(11) DEFAULT NULL COMMENT '产品id',
+       count INT(11) DEFAULT NULL COMMENT '数量',
+       money DECIMAL(11,0) DEFAULT NULL COMMENT '金额',
+       status INT(1) DEFAULT NULL COMMENT '订单状态：0创建中，1已完结'
+   )ENGINE=InnoDB AUTO_INCREMENT=7 CHARSET=utf8;
+   
+   use seata_storage;
+   CREATE TABLE t_storage(
+       id BIGINT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY ,
+       product_id BIGINT(11) DEFAULT NULL COMMENT '产品id',
+       total INT(11) DEFAULT NULL COMMENT '总库存',
+       used INT(11) DEFAULT NULL COMMENT '已用库存',
+       residue INT(11) DEFAULT NULL COMMENT '剩余库存'
+   )ENGINE=InnoDB AUTO_INCREMENT=7 CHARSET=utf8;
+   INSERT INTO t_storage(id, product_id, total, used, residue) VALUES(1,1,100,0,100);
+   
+   ```
+
+3. 回滚日志表（每个库都要创建）
+
+   ```sql
+   -- the table to store seata xid data
+   -- 0.7.0+ add context
+   -- you must to init this sql for you business databese. the seata server not need it.
+   -- 此脚本必须初始化在你当前的业务数据库中，用于AT 模式XID记录。与server端无关（注：业务数据库）
+   -- 注意此处0.3.0+ 增加唯一索引 ux_undo_log
+   drop table `undo_log`;
+   CREATE TABLE `undo_log` (
+     `id` bigint(20) NOT NULL AUTO_INCREMENT,
+     `branch_id` bigint(20) NOT NULL,
+     `xid` varchar(100) NOT NULL,
+     `context` varchar(128) NOT NULL,
+     `rollback_info` longblob NOT NULL,
+     `log_status` int(11) NOT NULL,
+     `log_created` datetime NOT NULL,
+     `log_modified` datetime NOT NULL,
+     `ext` varchar(100) DEFAULT NULL,
+     PRIMARY KEY (`id`),
+     UNIQUE KEY `ux_undo_log` (`xid`,`branch_id`)
+   ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
+   ```
+
+   
+
+### 15.5 订单/库存/账户业务微服务准备
+
+业务需求：下订单-减库存-扣余额-改（订单）状态
+
+1. 新建订单Order-Module
+
+   ```yml
+   server:
+     port: 2001
+   
+   spring:
+     application:
+       name: seata-order-service
+     cloud:
+       alibaba:
+         seata:
+           #自定义事务组名称需要与seata-server中的对应
+           tx-service-group: lyd_test_group
+       nacos:
+         discovery:
+           server-addr: localhost:8848
+     datasource:
+       driver-class-name: com.mysql.jdbc.Driver
+       url: jdbc:mysql://localhost:3306/seata_order
+       username: root
+       password: 123456
+   
+   feign:
+     hystrix:
+       enabled: false
+   
+   logging:
+     level:
+       io:
+         seata: info
+   
+   mybatis:
+     mapperLocations: classpath:mapper/*.xml
+   ```
+
+   ```xml
+       <dependencies>
+           <!--nacos-->
+           <dependency>
+               <groupId>com.alibaba.cloud</groupId>
+               <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+           </dependency>
+           <!--seata-->
+           <dependency>
+               <groupId>com.alibaba.cloud</groupId>
+               <artifactId>spring-cloud-starter-alibaba-seata</artifactId>
+               <exclusions>
+                   <exclusion>
+                       <artifactId>seata-all</artifactId>
+                       <groupId>io.seata</groupId>
+                   </exclusion>
+               </exclusions>
+           </dependency>
+           <dependency>
+               <groupId>io.seata</groupId>
+               <artifactId>seata-all</artifactId>
+               <version>0.9.0</version>
+           </dependency>
+           <!--feign-->
+           <dependency>
+               <groupId>org.springframework.cloud</groupId>
+               <artifactId>spring-cloud-starter-openfeign</artifactId>
+           </dependency>
+           <!--web-actuator-->
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-web</artifactId>
+           </dependency>
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-actuator</artifactId>
+           </dependency>
+           <!--mysql-druid-->
+           <dependency>
+               <groupId>mysql</groupId>
+               <artifactId>mysql-connector-java</artifactId>
+               <version>5.1.37</version>
+           </dependency>
+           <dependency>
+               <groupId>com.alibaba</groupId>
+               <artifactId>druid-spring-boot-starter</artifactId>
+               <version>1.1.10</version>
+           </dependency>
+           <dependency>
+               <groupId>org.mybatis.spring.boot</groupId>
+               <artifactId>mybatis-spring-boot-starter</artifactId>
+               <version>2.0.0</version>
+           </dependency>
+           <dependency>
+               <groupId>org.springframework.boot</groupId>
+               <artifactId>spring-boot-starter-test</artifactId>
+               <scope>test</scope>
+           </dependency>
+           <dependency>
+               <groupId>org.projectlombok</groupId>
+               <artifactId>lombok</artifactId>
+               <optional>true</optional>
+           </dependency>
+       </dependencies>
+   ```
+
+   
+
+2. 新建库存Storage-Module
+
+3. 新建订单Account-Module
+
+### 15.6 Test
