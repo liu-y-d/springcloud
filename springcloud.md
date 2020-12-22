@@ -2129,3 +2129,45 @@ Seata是一款开源的分布式事务解决方案，致力与在微服务架构
 3. 新建订单Account-Module
 
 ### 15.6 Test
+
+### 15.7 补充
+
+分布式事务的执行流程：
+
+1. TM开启分布式事务（TM向TC注册全局事务记录）
+2. 按业务场景，编排数据库、服务等事务内资源（RM向TC汇报资源准备状态）
+3. TM结束分布式事务，事务一阶段结束（TM通知TC提交/回滚分布式事务）
+4. TC汇总事务信息，决定分布式事务是提交还是回滚
+5. TC通知所有RM提交/回滚资源，事务二阶段结束
+
+AT模式如何做到对业务的无侵入
+
+1. 是什么
+
+   ![image-20201222215012647](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201222215012647.png)
+
+2. 一阶段加载（seata会拦截业务员SQL）
+
+   1. 解析SQL语义，找到业务SQL要更新的业务数据，在业务数据被更新前，将其保存成“before image”
+
+   2. 执行业务SQL更新业务数据，在业务数据更新之后
+
+   3. 将其保存成“after image”，最后生成行锁
+
+      以上操作全部在一个数据库事务内完成，这样保证了一阶段操作的原子性
+
+      ![image-20201222215518769](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201222215518769.png)
+
+3. 二阶段提交
+
+   如果顺利提交的话，因为业务SQL在一阶段已经提交到数据库，所以Seata框架只需将一阶段保存的快照数据和行锁删掉，完成数据清理即可
+
+   ![image-20201222215704951](https://gitee.com/SexJava/FigureBed/raw/master/static/image-20201222215704951.png)
+
+4. 二阶段回滚
+
+   二阶段如果是回滚的话，Seata就需要回滚一阶段已经执行的业务SQL，还原业务数据。回滚的方式便是用“before image”还原业务数据；但在还原前首先要校验脏写，对比数据库大昂前业务数据和“after image”，如果两份数据完全一致就说明没有脏写，可以还原业务数据，如果不一致说明有脏写，出现脏写就需要转人工处理
+
+
+
+![image-20201222220152996](C:\Users\刘云达\AppData\Roaming\Typora\typora-user-images\image-20201222220152996.png)
